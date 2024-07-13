@@ -9,3 +9,6 @@ langchain_community
 pinecone-client
 tiktoken
 langchain_core
+bs4
+pyodbc
+O365==2.0.19
