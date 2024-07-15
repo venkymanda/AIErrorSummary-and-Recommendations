@@ -5,7 +5,7 @@ import os
 import openai
 from bs4 import BeautifulSoup
 import datetime
-from datetime import datetime
+from datetime import datetime,timedelta
 import json
 import logging
 import pinecone
@@ -237,33 +237,88 @@ def ProcessErrorEmail(req: func.HttpRequest) -> func.HttpResponse:
         notification_subject = f"""Error Alert: New Error Processed from AI at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"""
         notification_body = f"""
         <!DOCTYPE html>
-            <html lang="en">
+            <html>
+
             <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
                 <title>Error Alert</title>
                 <style>
                     body {{
                         font-family: Arial, sans-serif;
-                        background-color: #f0f0f0;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100vh;
                         margin: 0;
+                        padding: 0;
+                        background-color: #f4f4f4;
                     }}
-                    .error-alert {{
-                        background-color: #ffffff;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                        padding: 20px;
-                        max-width: 500px;
+
+                    .container {{
                         width: 100%;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        background-color: #ffffff;
+                        padding: 20px;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                    }}
+
+                    .header {{
+                        text-align: center;
+                        padding-bottom: 20px;
+                    }}
+
+                    .header img {{
+                        max-width: 100px;
+                        height: auto;
+                        display: block;
+                        margin: 0 auto;
+                    }}
+
+                    .alert-title {{
+                        background-color: #ff0000;
+                        color: #ffffff;
+                        padding: 10px;
+                        text-align: center;
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin-bottom: 20px;
+                    }}
+
+                    .content {{
+                        font-size: 14px;
+                        line-height: 1.6;
+                    }}
+
+                    .content table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 20px;
+                    }}
+
+                    .content th,
+                    .content td {{
+                        border: 1px solid #dddddd;
+                        text-align: left;
+                        padding: 8px;
+                    }}
+
+                    .content th {{
+                        background-color: #f2f2f2;
+                    }}
+
+                    .content .log-layer,
+                    .content .error-summary,
+                    .content .recommendations {{
+                        margin-bottom: 20px;
+                    }}
+
+                    .footer {{
+                        text-align: center;
+                        font-size: 12px;
+                        color: #777777;
                     }}
                     .error-header {{
                         display: flex;
                         align-items: center;
-                        margin-bottom: 15px;
+                        margin-bottom: 20px;
                     }}
                     .error-icon {{
                         background-color: #ff4444;
@@ -277,59 +332,106 @@ def ProcessErrorEmail(req: func.HttpRequest) -> func.HttpResponse:
                         margin-right: 10px;
                         font-weight: bold;
                     }}
-                    .error-title {{
+                    .section-title {{
                         font-size: 18px;
                         font-weight: bold;
-                        margin: 0;
-                    }}
-                    .error-content {{
-                        margin-bottom: 15px;
+                        color: #333;
+                        margin-bottom: 10px;
+                        border-bottom: 2px solid #007bff;
+                        padding-bottom: 5px;
                     }}
                     .error-field {{
                         margin-bottom: 10px;
                     }}
-                    .error-label {{
-                        font-weight: bold;
-                        margin-bottom: 5px;
-                        display: block;
-                    }}
-                    .error-value {{
-                        margin: 0;
-                    }}
-                    .error-recommendations {{
-                        background-color: #f8f8f8;
-                        border-radius: 4px;
+                    .recommendations {{
+                        margin-bottom: 20px;
                         padding: 10px;
+                        border: 2px solid #007bff;
+                        background-color: #e7f3ff;
+                    }}
+                    .error-summary {{
+                        margin-bottom: 20px;
+                        padding: 10px;
+                        border: 2px solid #007bff;
+                        background: rgb(240, 240, 240);
+                    }}
+                    .log-layer {{
+                        margin-bottom: 20px;
+                        padding: 10px;
+                        border: 2px solid #007bff;
+                        background: rgb(240, 240, 240);
+                    }}
+
+
+                    .recommendations h3 {{
+                        margin-top: 0;
+                    }}
+
+                    .footer a {{
+                        color: #007bff;
+                        text-decoration: none;
                     }}
                 </style>
             </head>
+
             <body>
-                <div class="error-alert">
+                <div class="container">
+                    <div class="header">
+                        <img src="https://www.acumant.com/wp-content/uploads/2023/01/aculogo.webp" alt="Logo">
+                    </div>
+                    
                     <div class="error-header">
                         <div class="error-icon">!</div>
                         <h2 class="error-title">Error Alert from Azure Failures</h2>
                     </div>
-                    <div class="error-content">
-                        <div class="error-field">
-                            <span class="error-label">Logic app Name:</span>
-                            <p class="error-value">{error_source}</p>
+                    <div class="content">
+                        <table>
+                            <tr>
+                                <th>Name</th>
+                                <td>{error_source}</td>
+                            </tr>
+                            <tr>
+                                <th>Severity</th>
+                                <td>Error</td>
+                            </tr>
+                            <tr>
+                                <th>Resource</th>
+                                <td>Logicapp</td>
+                            </tr>
+                            <tr>
+                                <th>Search interval start time</th>
+                                <td>J{(datetime.utcnow()-timedelta(minutes=15)).strftime('%b %d, %Y %H:%M:%S UTC')}</td>
+                            </tr>
+                            <tr>
+                                <th>Search interval duration</th>
+                                <td>15 min</td>
+                            </tr>
+                        </table>
+
+                        <div class="log-layer">
+                            <h3>Log Layer Message :</h3>
+                            <p>{log_layer_message}</p>
                         </div>
-                        <div class="error-field">
-                            <span class="error-label">Log Layer Message:</span>
-                            <p class="error-value">{log_layer_message}</p>
+
+                        <div class="error-summary">
+                            <h3>Error Summary :</h3>
+                            <p>{error_summary["Error Summary"]}</p>
                         </div>
-                        <div class="error-field">
-                            <span class="error-label">Error Summary:</span>
-                            <p class="error-value">{error_summary["Error Summary"]}</p>
+
+                        <div class="recommendations">
+                            <div class="section-title">Recommendations</div>
+                            <p>{error_summary["Recommendation"]}</p>
                         </div>
                     </div>
-                    <div class="error-recommendations">
-                        <span class="error-label">Recommendations:</span>
-                        <p class="error-value">{error_summary["Recommendation"]}</p>
-                    </div>
+                    
+                    <div>
+                <table style="border-spacing: 0px; border-collapse: collapse; padding: 0px; vertical-align: top; background: rgb(255, 255, 255); width: 640px; margin: 0px auto; text-align: inherit;" class="x_container x_footer-template" align="center" dir="ltr" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><td style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 20px;"><table style="border-spacing: 0px; border-collapse: collapse; padding: 0px; vertical-align: top; text-align: left; width: 100%; background-color: rgb(240, 240, 240);" align="center" class="x_wrapper x_outer-wrapper x_footer-wrapper" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><td style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 12px 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 20px;" class="x_wrapper-inner"><center style="width:100%; min-width:640px"><table style="border-spacing:0; border-collapse:collapse; padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left; padding:0; width:100%; display:table" class="x_row x_image-row" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><th style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; text-align: left; font-size: 14px; line-height: 20px; margin: 0px auto; padding: 12px 24px 0px; width: auto;" class="x_small-12 x_large-12 x_columns x_first x_last"><table style="border-spacing:0; border-collapse:collapse; padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left; width:100%" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><th style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 20px;"><table style="border-spacing:0; border-collapse:collapse; padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left; width:auto" valign="middle" class="x_social-links" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><td style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px 8px 0px 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 1;"><a style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; text-align: left; line-height: 20px; color: rgb(72, 70, 68); display: inline-block; text-decoration: underline;" data-auth="NotApplicable" rel="noopener noreferrer" target="_blank" href="https://nam.safelink.emails.azure.net/redirect/?destination=https%3A%2F%2Fwww.facebook.com%2Fmicrosoftazure&amp;p=bT1lZGRlZGIxOS1iZjU4LTRlOTgtYTVlNC1kY2E5ODlkNTRlYzMmcz00MzU5ZjJiMi1mMGQxLTQ0ZTgtOTlkMi1mYWFlZDQ1NzIyOTkmdT1hZW8mbD1mb290ZXIlM0FmYWNlYm9vaw%3D%3D" data-linkindex="3"><img style="outline:none; text-decoration:none; max-width:100%; border:none; height:16px; width:auto; clear:none; display:inline" class="x_social-facebook" title="Facebook" alt="Facebook" width="auto" height="16" src="https://images.ecomm.microsoft.com/cdn/mediahandler/azure-emails-templates/production/shared/images/templates/shared/images/logos/footer-facebook-4x.png" data-imagetype="External"></a> </td><td style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px 8px 0px 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 1;"><a style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; text-align: left; line-height: 20px; color: rgb(72, 70, 68); display: inline-block; text-decoration: underline;" data-auth="NotApplicable" rel="noopener noreferrer" target="_blank" href="https://nam.safelink.emails.azure.net/redirect/?destination=https%3A%2F%2Ftwitter.com%2Fazure&amp;p=bT1lZGRlZGIxOS1iZjU4LTRlOTgtYTVlNC1kY2E5ODlkNTRlYzMmcz00MzU5ZjJiMi1mMGQxLTQ0ZTgtOTlkMi1mYWFlZDQ1NzIyOTkmdT1hZW8mbD1mb290ZXIlM0F0d2l0dGVy" data-linkindex="4"><img style="outline:none; text-decoration:none; max-width:100%; border:none; height:16px; width:18px; clear:none; display:inline" class="x_social-twitter" title="Twitter" alt="Twitter" width="18" height="16" src="https://images.ecomm.microsoft.com/cdn/mediahandler/azure-emails-templates/production/shared/images/templates/shared/images/logos/footer-twitter-4x.png" data-imagetype="External"></a> </td><td style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px 8px 0px 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 1;"><a style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; text-align: left; line-height: 20px; color: rgb(72, 70, 68); display: inline-block; text-decoration: underline;" data-auth="NotApplicable" rel="noopener noreferrer" target="_blank" href="https://nam.safelink.emails.azure.net/redirect/?destination=https%3A%2F%2Fwww.youtube.com%2F%40MicrosoftAzure&amp;p=bT1lZGRlZGIxOS1iZjU4LTRlOTgtYTVlNC1kY2E5ODlkNTRlYzMmcz00MzU5ZjJiMi1mMGQxLTQ0ZTgtOTlkMi1mYWFlZDQ1NzIyOTkmdT1hZW8mbD1mb290ZXIlM0F5b3V0dWJl" data-linkindex="5"><img style="outline:none; text-decoration:none; max-width:100%; border:none; height:16px; width:24px; clear:none; display:inline" class="x_social-youtube" title="YouTube" alt="YouTube" width="24" height="16" src="https://images.ecomm.microsoft.com/cdn/mediahandler/azure-emails-templates/production/shared/images/templates/shared/images/logos/footer-youtube-4x.png" data-imagetype="External"></a> </td><td style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px 8px 0px 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 1;"><a style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; text-align: left; line-height: 20px; color: rgb(72, 70, 68); display: inline-block; text-decoration: underline;" data-auth="NotApplicable" rel="noopener noreferrer" target="_blank" href="https://nam.safelink.emails.azure.net/redirect/?destination=https%3A%2F%2Fwww.linkedin.com%2Fshowcase%2Fmicrosoft-developers&amp;p=bT1lZGRlZGIxOS1iZjU4LTRlOTgtYTVlNC1kY2E5ODlkNTRlYzMmcz00MzU5ZjJiMi1mMGQxLTQ0ZTgtOTlkMi1mYWFlZDQ1NzIyOTkmdT1hZW8mbD1mb290ZXIlM0FsaW5rZWRpbg%3D%3D" data-linkindex="6"><img style="outline:none; text-decoration:none; max-width:100%; border:none; height:16px; width:16px; clear:none; display:inline" class="x_social-icon" title="LinkedIn" alt="LinkedIn" width="16" height="16" src="https://images.ecomm.microsoft.com/cdn/mediahandler/azure-emails-templates/production/shared/images/templates/shared/images/logos/footer-linkedin-4x.png" data-imagetype="External"></a> </td></tr></tbody></table></th><th style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; margin: 0px; text-align: left; font-size: 14px; line-height: 20px; visibility: hidden; width: 0px; padding: 0px;" class="x_expander"></th></tr></tbody></table></th></tr></tbody></table><table style="border-spacing:0; border-collapse:collapse; padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left; padding:0; width:100%; display:table" class="x_row" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><th style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; text-align: left; font-size: 14px; line-height: 20px; margin: 0px auto; padding: 12px 24px; width: auto;" class="x_small-12 x_large-12 x_columns x_first x_last"><table style="border-spacing:0; border-collapse:collapse; padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left; width:100%" role="presentation"><tbody><tr style="padding-top:0; padding-right:0; padding-bottom:0; padding-left:0; vertical-align:top; text-align:left"><th style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; margin: 0px; text-align: left; font-size: 14px; line-height: 20px;"><p style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; margin: 0px; text-align: left; overflow-wrap: normal; font-size: 12px; line-height: 16px; color: rgb(72, 70, 68);" class="x_margin-bottom-0"><a style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; text-align: left; line-height: 20px; color: rgb(72, 70, 68); display: inline-block; text-decoration: underline;" title="Privacy Statement" data-auth="NotApplicable" rel="noopener noreferrer" target="_blank" href="https://nam.safelink.emails.azure.net/redirect/?destination=https%3A%2F%2Fgo.microsoft.com%2Ffwlink%2F%3FLinkId%3D521839&amp;p=bT1lZGRlZGIxOS1iZjU4LTRlOTgtYTVlNC1kY2E5ODlkNTRlYzMmcz00MzU5ZjJiMi1mMGQxLTQ0ZTgtOTlkMi1mYWFlZDQ1NzIyOTkmdT1hZW8mbD1wcml2YWN5LXN0YXRlbWVudA%3D%3D" data-linkindex="7">Privacy Statement</a> </p><p style="font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; padding: 0px; margin: 8px 0px 12px; text-align: left; overflow-wrap: normal; font-size: 12px; line-height: 16px; color: rgb(72, 70, 68);" class="x_margin-top-8">Acumant, <span style="display:inline-block; word-break:keep-all" class="x_no-wrap">AI Division, &ZeroWidthSpace;169 70, Solna,Sweden&ZeroWidthSpace;</span></p><img style="outline:none; text-decoration:none; max-width:100%; clear:both; display:block; height:20px; max-height:20px; width:auto" title="Microsoft" alt="Microsoft" class="x_logo-microsoft" width="auto" height="20" src="https://www.acumant.com/wp-content/uploads/2023/01/aculogo.webp" data-imagetype="External"> </th><th style="overflow-wrap: break-word; border-collapse: collapse; vertical-align: top; color: rgb(17, 16, 15); font-family: &quot;Segoe UI&quot;, SegoeUI, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-weight: 400; margin: 0px; text-align: left; font-size: 14px; line-height: 20px; visibility: hidden; width: 0px; padding: 0px;" class="x_expander"></th></tr></tbody></table></th></tr></tbody></table></center></td></tr></tbody></table></td></tr></tbody></table></div>
                 </div>
             </body>
+
             </html>
+
+
         """
 
         
